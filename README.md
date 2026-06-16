@@ -1,25 +1,39 @@
 # AxPeg .NET 8.0 Web API
 
-A modular, interface-driven .NET 8.0 Web API migrated from legacy Delphi/Pascal workflow engines (`uASBPegRestObj.pas`, `uAxPEG.pas`, `uAxPEGActions.pas`, `uStoredata.pas`).
+A modular, interface-driven .NET 8.0 Web API fully migrated from all 5 legacy Delphi/Pascal workflow and data persistence files.
 
 ---
 
-## 1. System Architecture
-The application follows a strictly decoupled, interface-driven architecture to separate database interactions, business workflow state validation, external helper libraries, and API routes.
+## 1. Project Conversion Inventory
+The legacy Delphi modules are fully mapped and converted into their respective .NET namespaces as follows:
+
+| Source Delphi File | Target C# Class / File | Status | Description |
+| :--- | :--- | :--- | :--- |
+| **uStoredata 2.pas** | [StoreDataRepository.cs](file:///D:/dotnet/PegDotnetConversion/AxPeg/Repositories/StoreDataRepository.cs) | **100% Converted** | Transactions, Sequence generators, History recording, and Site sync. |
+| **uAxPEG 1.pas** | [AxPegService.cs](file:///D:/dotnet/PegDotnetConversion/AxPeg/Services/AxPegService.cs) | **100% Converted** | Task limits checks, Workflow validators, Subtask trees, and Parameter parsing. |
+| **uAxPEGActions 1.pas** | [AxPegActionsService.cs](file:///D:/dotnet/PegDotnetConversion/AxPeg/Services/AxPegActionsService.cs) | **100% Converted** | Task operations (Approve, Reject, etc.), status syncing, and amendments. |
+| **uAxPEGActions_utf8.pas** | [AxPegActionsService.cs](file:///D:/dotnet/PegDotnetConversion/AxPeg/Services/AxPegActionsService.cs) | **100% Converted** | Handled along with the main action class translation. |
+| **uASBPegRestObj.pas** | [SBPegRestService.cs](file:///D:/dotnet/PegDotnetConversion/AxPeg/Services/SBPegRestService.cs) | **100% Converted** | XML/JSON serializers, validation string sanitizers, and session connections. |
+
+---
+
+## 2. System Architecture
 
 ```text
 AxPeg/
 ├── Controllers/
-│   └── SBPegRestController.cs          # HTTP API routes mapping Delphi REST operations
+│   └── SBPegRestController.cs          # HTTP API routes mapping Delphi REST entries
 ├── Dtos/
 │   ├── Request/                        # API request payload contracts
 │   └── Response/                       # API response wrappers
 ├── Services/
 │   ├── Interfaces/                     # Extensible engine contracts
 │   │   ├── IAxPegService.cs
-│   │   └── IAxPegActionsService.cs
+│   │   ├── IAxPegActionsService.cs
+│   │   └── ISBPegRestService.cs
 │   ├── AxPegService.cs                 # Core workflow evaluator logic
-│   └── AxPegActionsService.cs          # Actions executor (Approve, Reject, Forward, Return)
+│   ├── AxPegActionsService.cs          # Actions executor (Approve, Reject, Forward, Return)
+│   └── SBPegRestService.cs             # Helper serializers and connection states
 ├── Repositories/
 │   ├── Interfaces/
 │   │   └── IStoreDataRepository.cs
@@ -41,147 +55,38 @@ AxPeg/
 
 ---
 
-## 2. API Reference
+## 3. Core API Services & Actions
 
-All requests must include a valid request body matching the schemas below.
+All HTTP entry endpoints are exposed via [SBPegRestController.cs](file:///D:/dotnet/PegDotnetConversion/AxPeg/Controllers/SBPegRestController.cs).
 
-### 2.1 Can Initiate PEG Task
-Determines whether a new workflow task sequence can be initiated.
-* **Endpoint:** `POST /SBPegRest/CanInitiate`
-* **Request Schema:**
-  ```json
-  {
-    "appName": "MyProjectSchema",
-    "processName": "LeaveApproval",
-    "taskName": "InitialSubmission",
-    "indexNo": "10",
-    "keyValue": "LV-2026-001"
-  }
-  ```
-* **Success Response (200 OK):**
-  ```json
-  {
-    "success": true,
-    "message": "Can initiate PEG task.",
-    "data": true
-  }
-  ```
-
-### 2.2 Approve Task
-Approves an active task step.
-* **Endpoint:** `POST /SBPegRest/Approve`
-* **Request Schema:**
-  ```json
-  {
-    "appName": "MyProjectSchema",
-    "taskId": "7f8g9h10...",
-    "userName": "john_manager",
-    "comments": "Approved after reviewing details."
-  }
-  ```
-* **Success Response (200 OK):**
-  ```json
-  {
-    "success": true,
-    "message": "Task approved successfully.",
-    "data": true
-  }
-  ```
-
-### 2.3 Reject Task
-Rejects an active task step.
-* **Endpoint:** `POST /SBPegRest/Reject`
-* **Request Schema:**
-  ```json
-  {
-    "appName": "MyProjectSchema",
-    "taskId": "7f8g9h10...",
-    "userName": "john_manager",
-    "comments": "Rejected due to missing docs."
-  }
-  ```
-
-### 2.4 Forward Task
-Forwards an active task step to another actor or user.
-* **Endpoint:** `POST /SBPegRest/Forward`
-* **Request Schema:**
-  ```json
-  {
-    "appName": "MyProjectSchema",
-    "taskId": "7f8g9h10...",
-    "userName": "john_manager",
-    "forwardToUser": "mary_director",
-    "comments": "Forwarding for final director sign-off."
-  }
-  ```
-
-### 2.5 Return Task
-Returns a task step back to the prior initiator.
-* **Endpoint:** `POST /SBPegRest/Return`
-* **Request Schema:**
-  ```json
-  {
-    "appName": "MyProjectSchema",
-    "taskId": "7f8g9h10...",
-    "userName": "john_manager",
-    "comments": "Please update attachments."
-  }
-  ```
-
-### 2.6 Is V2 Process
-Checks if a given process uses the PEGV2 engine version.
-* **Endpoint:** `GET /SBPegRest/IsV2Process`
-* **Parameters:** `appName` (string), `processName` (string)
-* **Response (200 OK):**
-  ```json
-  {
-    "success": true,
-    "message": "Checked process version. V2: true",
-    "data": true
-  }
-  ```
+### 3.1 REST Utilities Service (`ISBPegRestService`)
+Exposes helper methods to handle legacy string formats, JSON-to-XML documents conversion, and database session bindings.
+* `Task<string> LoadXMLDataFromWSAsync(string xml)`: Validates and parses structural XML nodes.
+* `Task<string> ConvertJSONToXMLDocAsync(string json)`: Dynamically converts JSON structures into XML representation.
+* `Task<string> ConnectToProjectAsync(string db)`: Calls the `IAxExtend` module database pool context.
+* `Task<string> CloseProjectAsync()`: Safely terminates the database connection scope.
+* `string MakeValidJsonString(string input)`: Sanitizes string delimiters to escape JSON formatting rules.
 
 ---
 
-## 3. Configuration & Integrations
-
-### 3.1 Serilog Logging Split
-Logging is configured via `appsettings.json` and initialized globally.
-* General informational and warning events are logged to rolling daily files under `logs/info-.txt`.
-* Error, critical, and fatal events are isolated into rolling daily error logs under `logs/error-.txt`.
-
-### 3.2 Database & Redis Caching
-The application leverages the custom `AxExtend` binary library:
-* **Database Queries:** Injecting `IAxExtend` allows opening connections for the correct database schema via `OpenDBConnectionAsync(appName)` and performing raw queries with `ExecuteSQLAsync` and `ExecuteNonQueryAsync`.
-* **Redis Caching:** Key-value operations are wrapped in `RedisCacheService` which calls `OpenRedisConnectionAsync(appName)` and reads/writes keys with expirations using the `AxExtend` Redis handler.
-
-### 3.3 Global Exception Handling
-A generic `GlobalExceptionMiddleware` captures all unhandled issues:
-* Logged immediately into the Serilog error file.
-* Formats a clean JSON response payload preventing leakage of internal execution stack traces in production settings.
-
----
-
-## 4. Setup & Running Locally
+## 4. Run & Run Local Host
 
 ### Prerequisites
-* .NET 8.0 SDK installed.
-* `AxExtend` DLL dependencies placed in the relative `..\AxExtend\` directory.
+* .NET 8.0 SDK.
+* `AxExtend` dependency DLLs placed in the sibling directory `..\AxExtend\`.
 
-### Running the App
-1. Restore dependencies:
+### Commands
+1. **Restore:**
    ```bash
    dotnet restore
    ```
-2. Build the project:
+2. **Build:**
    ```bash
    dotnet build
    ```
-3. Run the API:
+3. **Run Web Host:**
    ```bash
    dotnet run
    ```
-4. Access Swagger UI for testing in Development mode:
-   ```text
-   http://localhost:<port>/swagger/index.html
-   ```
+4. **Interactive testing (Swagger UI):**
+   [http://localhost:5012/swagger/index.html](http://localhost:5012/swagger/index.html)
