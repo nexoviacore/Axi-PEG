@@ -23,6 +23,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<AxPeg.Repositories.Interfaces.IStoreDataRepository, AxPeg.Repositories.StoreDataRepository>();
 builder.Services.AddScoped<AxPeg.Services.Interfaces.IAxPegService, AxPeg.Services.AxPegService>();
 builder.Services.AddScoped<AxPeg.Services.Interfaces.IAxPegActionsService, AxPeg.Services.AxPegActionsService>();
+builder.Services.AddScoped<AxPeg.Services.Interfaces.ISBPegRestService, AxPeg.Services.SBPegRestService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
