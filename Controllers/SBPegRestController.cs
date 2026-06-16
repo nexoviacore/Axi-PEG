@@ -7,7 +7,7 @@ using AxPeg.Dtos.Response;
 namespace AxPeg.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/[controller]")]
     public class SBPegRestController : ControllerBase
     {
         private readonly IAxPegService _pegService;
