@@ -12,6 +12,7 @@ namespace AxPeg.Services.Interfaces
         Task<bool> IsPEGV2ProcessAsync(string appName, string processName);
         Task<bool> HasPegActiveTasksAsync(string appName, string processName, string taskName, string keyValue);
         Task EvaluateProcessSetAsync(string appName, string processName, string keyValue, string transId);
+        Task CheckAxProcessDefAsync(string appName, string transId, string keyValue);
 
         // Max Index Calculations
         Task<string> GetMaxIndexNoAsync(string appName, string processName, string groupedIndexNo, string keyValue);

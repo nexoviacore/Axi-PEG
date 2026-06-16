@@ -898,6 +898,39 @@ namespace AxPeg.Services
                 return $"{variableName}={newValue},{originalStr}";
             }
         }
+
+        public async Task CheckAxProcessDefAsync(string appName, string transId, string keyValue)
+        {
+            try
+            {
+                await _dbRepo.OpenConnectionAsync(appName);
+                Log.Information("Checking AxProcess definitions for transId: {TransId}", transId);
+
+                // Check for PEGV2 process records associated with this transId
+                string sql = $"SELECT DISTINCT processname FROM axprocessdefv2 WHERE LOWER(transid) = '{transId.ToLower()}' AND active = 't'";
+                var table = await _dbRepo.ExecuteQueryAsync(sql);
+                if (table != null && table.Rows.Count > 0)
+                {
+                    foreach (DataRow row in table.Rows)
+                    {
+                        string processName = row["processname"]?.ToString() ?? string.Empty;
+                        if (!string.IsNullOrEmpty(processName))
+                        {
+                            // Trigger evaluation loop for each configured process
+                            await EvaluateProcessSetAsync(appName, processName, keyValue, transId);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error running CheckAxProcessDef for transId {TransId}", transId);
+            }
+            finally
+            {
+                await _dbRepo.CloseConnectionAsync();
+            }
+        }
     }
 }
 
