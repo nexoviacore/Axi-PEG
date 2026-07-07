@@ -126,12 +126,15 @@ namespace AxPeg.Services
             }
         }
 
-        public async Task<bool> IsPEGV2ProcessAsync(string appName, string processName)
+        public async Task<bool> IsPEGV2ProcessAsync(string appName, string processName, string transId = null)
         {
             try
             {
                 // Try retrieving from Redis cache first
-                string cacheKey = $"pegv2:process:{processName}";
+                string cacheKey = !string.IsNullOrEmpty(transId)
+                    ? $"pegv2:transid:{transId}"
+                    : $"pegv2:process:{processName}";
+
                 string cachedValue = await _cache.StringGetAsync(appName, cacheKey);
                 if (!string.IsNullOrEmpty(cachedValue))
                 {
@@ -139,16 +142,32 @@ namespace AxPeg.Services
                 }
 
                 await _dbRepo.OpenConnectionAsync(appName);
-                string where = $"processname='{processName}' and version='V2'";
-                int count = await _dbRepo.GetDataRowCountAsync("axprocessdef", "processname", where, string.Empty);
+                bool isV2 = false;
+
+                if (!string.IsNullOrEmpty(transId))
+                {
+                    // Match legacy CheckAxProcessDef(transId, 'v2') behavior
+                    string sql = $"SELECT COUNT(*) FROM axprocessdefv2 WHERE LOWER(transid) = '{transId.ToLower()}' AND active = 't'";
+                    var table = await _dbRepo.ExecuteQueryAsync(sql);
+                    if (table != null && table.Rows.Count > 0)
+                    {
+                        int count = Convert.ToInt32(table.Rows[0][0]);
+                        isV2 = count > 0;
+                    }
+                }
+                else
+                {
+                    string where = $"processname='{processName}' and version='V2'";
+                    int count = await _dbRepo.GetDataRowCountAsync("axprocessdef", "processname", where, string.Empty);
+                    isV2 = count > 0;
+                }
                 
-                bool isV2 = count > 0;
                 await _cache.StringSetAsync(appName, cacheKey, isV2.ToString().ToLower(), 3600); // cache for 1 hour
                 return isV2;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error determining if process {ProcessName} is PEGV2", processName);
+                Log.Error(ex, "Error determining if process {ProcessName} / transId {TransId} is PEGV2", processName, transId);
                 return false;
             }
             finally
