@@ -566,13 +566,13 @@ namespace AxPeg.Repositories
             if (isNewTrans)
             {
                 sql = $"INSERT INTO {histTableName} (modifieddate, recordid, username, tablerecid, newtrans, canceltrans, cancelremarks) " +
-                      $"VALUES (GETDATE(), {recordId}, '{userName}', {recordId}, 't', 'f', '')";
+                      $"VALUES (CURRENT_TIMESTAMP, {recordId}, '{userName}', {recordId}, 't', 'f', '')";
             }
             else
             {
                 string transDelStr = transDeleted ? "t" : "f";
                 sql = $"INSERT INTO {histTableName} (modifieddate, recordid, username, fieldname, modno, frameno, parentrow, tablerecid, idvalue, oldidvalue, newtrans, canceltrans, cancelremarks, newvalue, oldvalue, delflag, transdeleted) " +
-                      $"VALUES (GETDATE(), {recordId}, '{userName}', '{fieldName}', {modNo + 1}, {frameNo}, {parentRow}, {tableRecId}, {idValue}, {oldIdValue}, 'f', '{(isCancelTrans ? "t" : "f")}', '{cancelRemarks.Replace("'", "''")}', '{newValue.Replace("'", "''")}', '{oldValue.Replace("'", "''")}', '{delflag}', '{transDelStr}')";
+                      $"VALUES (CURRENT_TIMESTAMP, {recordId}, '{userName}', '{fieldName}', {modNo + 1}, {frameNo}, {parentRow}, {tableRecId}, {idValue}, {oldIdValue}, 'f', '{(isCancelTrans ? "t" : "f")}', '{cancelRemarks.Replace("'", "''")}', '{newValue.Replace("'", "''")}', '{oldValue.Replace("'", "''")}', '{delflag}', '{transDelStr}')";
             }
 
             await ExecuteNonQueryAsync(sql);
@@ -602,7 +602,7 @@ namespace AxPeg.Repositories
         {
             string histTableName = $"{tableName}{transId}history";
             string sql = $"INSERT INTO {histTableName} (modifieddate, recordid, username, newtrans, canceltrans, cancelremarks, ChangedValue) " +
-                          $"VALUES (GETDATE(), {recordId}, '{userName}', 'f', 't', '{cancelRemarks.Replace("'", "''")}', '{changedValueText?.Replace("'", "''") ?? ""}')";
+                          $"VALUES (CURRENT_TIMESTAMP, {recordId}, '{userName}', 'f', 't', '{cancelRemarks.Replace("'", "''")}', '{changedValueText?.Replace("'", "''") ?? ""}')";
             await ExecuteNonQueryAsync(sql);
         }
 
@@ -616,7 +616,7 @@ namespace AxPeg.Repositories
             if (table != null && table.Rows.Count > 0)
             {
                 string outboundId = table.Rows[0]["outboundid"]?.ToString() ?? "0";
-                string updateSql = $"UPDATE {outboundTable} SET username = '{userName}', modifiedon = GETDATE() WHERE outboundid = {outboundId}";
+                string updateSql = $"UPDATE {outboundTable} SET username = '{userName}', modifiedon = CURRENT_TIMESTAMP WHERE outboundid = {outboundId}";
                 await ExecuteNonQueryAsync(updateSql);
             }
             else
