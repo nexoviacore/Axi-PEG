@@ -528,7 +528,7 @@ namespace AxPeg.Repositories
             {
                 string transDelStr = transDeleted ? "t" : "f";
                 sql = $"INSERT INTO {histTableName} (modifieddate, recordid, username, fieldname, modno, frameno, parentrow, tablerecid, idvalue, oldidvalue, newtrans, canceltrans, cancelremarks, newvalue, oldvalue, delflag, transdeleted) " +
-                      $"VALUES (GETDATE(), {recordId}, '{userName}', '{fieldName}', {modNo}, {frameNo}, {parentRow}, {tableRecId}, {idValue}, {oldIdValue}, 'f', '{(isCancelTrans ? "t" : "f")}', '{cancelRemarks.Replace("'", "''")}', '{newValue.Replace("'", "''")}', '{oldValue.Replace("'", "''")}', '{delflag}', '{transDelStr}')";
+                      $"VALUES (GETDATE(), {recordId}, '{userName}', '{fieldName}', {modNo + 1}, {frameNo}, {parentRow}, {tableRecId}, {idValue}, {oldIdValue}, 'f', '{(isCancelTrans ? "t" : "f")}', '{cancelRemarks.Replace("'", "''")}', '{newValue.Replace("'", "''")}', '{oldValue.Replace("'", "''")}', '{delflag}', '{transDelStr}')";
             }
 
             await ExecuteNonQueryAsync(sql);
