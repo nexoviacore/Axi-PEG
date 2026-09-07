@@ -292,6 +292,7 @@ namespace AxPeg.Services
                 var activeTasks = await _dbRepo.ExecuteQueryAsync(activeTasksQuery);
                 if (activeTasks != null && activeTasks.Rows.Count > 0)
                 {
+                    await _dbRepo.BeginTransactionAsync();
                     foreach (System.Data.DataRow row in activeTasks.Rows)
                     {
                         string targetTaskId = row["taskid"]?.ToString() ?? string.Empty;
@@ -308,10 +309,12 @@ namespace AxPeg.Services
                             Log.Information("Task {TaskId} successfully skipped as part of index group sync.", targetTaskId);
                         }
                     }
+                    await _dbRepo.CommitTransactionAsync();
                 }
             }
             catch (Exception ex)
             {
+                await RollbackTransactionQuietlyAsync();
                 Log.Error(ex, "Error executing SkipAndUpdateAllOtherTasksWithSameIndexAsync for process {ProcessName}", processName);
             }
             finally
