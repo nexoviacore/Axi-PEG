@@ -45,6 +45,18 @@ namespace AxPeg.Services
             await _dbRepo.ExecuteNonQueryAsync(sql);
         }
 
+        private async Task RollbackTransactionQuietlyAsync()
+        {
+            try
+            {
+                await _dbRepo.RollbackTransactionAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to roll back PEG action transaction.");
+            }
+        }
+
         public async Task<bool> ApproveTaskAsync(string appName, string taskId, string userName, string comments)
         {
             try
@@ -53,6 +65,7 @@ namespace AxPeg.Services
                 Log.Information("Approving task {TaskId} by user {UserName}", taskId, userName);
 
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
+                await _dbRepo.BeginTransactionAsync();
 
                 // Update active tasks status
                 string updateSql = $"UPDATE axactivetasks SET status = 'Approved', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
@@ -75,14 +88,17 @@ namespace AxPeg.Services
                         await InsertActiveTaskStatusAsync(appName, taskId, transId, keyField, keyValue, "approved", userName, processName, taskName, comments, taskType, indexNo, subIndexNo, priorIndex);
                     }
 
+                    await _dbRepo.CommitTransactionAsync();
                     // Push audit or notification message to Queue
                     await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", $"{{\"taskId\":\"{taskId}\",\"action\":\"Approve\",\"user\":\"{userName}\"}}");
                     return true;
                 }
+                await RollbackTransactionQuietlyAsync();
                 return false;
             }
             catch (Exception ex)
             {
+                await RollbackTransactionQuietlyAsync();
                 Log.Error(ex, "Failed to approve task {TaskId}", taskId);
                 return false;
             }
@@ -100,6 +116,7 @@ namespace AxPeg.Services
                 Log.Information("Rejecting task {TaskId} by user {UserName}", taskId, userName);
 
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
+                await _dbRepo.BeginTransactionAsync();
 
                 string updateSql = $"UPDATE axactivetasks SET status = 'Rejected', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
@@ -121,13 +138,16 @@ namespace AxPeg.Services
                         await InsertActiveTaskStatusAsync(appName, taskId, transId, keyField, keyValue, "rejected", userName, processName, taskName, comments, taskType, indexNo, subIndexNo, priorIndex);
                     }
 
+                    await _dbRepo.CommitTransactionAsync();
                     await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", $"{{\"taskId\":\"{taskId}\",\"action\":\"Reject\",\"user\":\"{userName}\"}}");
                     return true;
                 }
+                await RollbackTransactionQuietlyAsync();
                 return false;
             }
             catch (Exception ex)
             {
+                await RollbackTransactionQuietlyAsync();
                 Log.Error(ex, "Failed to reject task {TaskId}", taskId);
                 return false;
             }
@@ -145,6 +165,7 @@ namespace AxPeg.Services
                 Log.Information("Forwarding task {TaskId} from {UserName} to {ForwardToUser}", taskId, userName, forwardToUser);
 
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
+                await _dbRepo.BeginTransactionAsync();
 
                 string updateSql = $"UPDATE axactivetasks SET status = 'Forwarded', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}', forwardedto = '{forwardToUser}' WHERE taskid = '{taskId}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
@@ -166,13 +187,16 @@ namespace AxPeg.Services
                         await InsertActiveTaskStatusAsync(appName, taskId, transId, keyField, keyValue, "forwarded", userName, processName, taskName, comments, taskType, indexNo, subIndexNo, priorIndex);
                     }
 
+                    await _dbRepo.CommitTransactionAsync();
                     await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", $"{{\"taskId\":\"{taskId}\",\"action\":\"Forward\",\"from\":\"{userName}\",\"to\":\"{forwardToUser}\"}}");
                     return true;
                 }
+                await RollbackTransactionQuietlyAsync();
                 return false;
             }
             catch (Exception ex)
             {
+                await RollbackTransactionQuietlyAsync();
                 Log.Error(ex, "Failed to forward task {TaskId}", taskId);
                 return false;
             }
@@ -190,6 +214,7 @@ namespace AxPeg.Services
                 Log.Information("Returning task {TaskId} by user {UserName}", taskId, userName);
 
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
+                await _dbRepo.BeginTransactionAsync();
 
                 string updateSql = $"UPDATE axactivetasks SET status = 'Returned', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
@@ -211,13 +236,16 @@ namespace AxPeg.Services
                         await InsertActiveTaskStatusAsync(appName, taskId, transId, keyField, keyValue, "returned", userName, processName, taskName, comments, taskType, indexNo, subIndexNo, priorIndex);
                     }
 
+                    await _dbRepo.CommitTransactionAsync();
                     await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", $"{{\"taskId\":\"{taskId}\",\"action\":\"Return\",\"user\":\"{userName}\"}}");
                     return true;
                 }
+                await RollbackTransactionQuietlyAsync();
                 return false;
             }
             catch (Exception ex)
             {
+                await RollbackTransactionQuietlyAsync();
                 Log.Error(ex, "Failed to return task {TaskId}", taskId);
                 return false;
             }
