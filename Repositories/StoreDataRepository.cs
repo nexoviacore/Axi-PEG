@@ -486,23 +486,34 @@ namespace AxPeg.Repositories
             string seqTableName = $"{tableName}{seqTable}";
             string userSeqTableName = $"{tableName}USERSEQUENCE";
 
-            string updateActiveToFalse = $"UPDATE {seqTableName} SET activesequence = 'F' WHERE LOWER(transtype) = '{transId.ToLower()}' AND LOWER(fieldname) = '{fieldName.ToLower()}' AND activesequence = 'T'";
-            await ExecuteNonQueryAsync(updateActiveToFalse);
-
-            string updatePrefixToActive = $"UPDATE {seqTableName} SET activesequence = 'T' WHERE LOWER(transtype) = '{transId.ToLower()}' AND LOWER(fieldname) = '{fieldName.ToLower()}' AND prefix = '{prefix}'";
-            await ExecuteNonQueryAsync(updatePrefixToActive);
-
-            int count = await GetDataRowCountAsync(userSeqTableName, "prefix", $"LOWER(transtype) = '{transId.ToLower()}' AND LOWER(fieldname) = '{fieldName.ToLower()}' AND LOWER(uname) = '{userName.ToLower()}'", string.Empty);
-
-            if (count > 0)
+            await BeginTransactionAsync();
+            try
             {
-                string updateSQL = $"UPDATE {userSeqTableName} SET prefix = '{prefix}' WHERE LOWER(transtype) = '{transId.ToLower()}' AND LOWER(fieldname) = '{fieldName.ToLower()}' AND LOWER(uname) = '{userName.ToLower()}'";
-                await ExecuteNonQueryAsync(updateSQL);
+                string updateActiveToFalse = $"UPDATE {seqTableName} SET activesequence = 'F' WHERE LOWER(transtype) = '{transId.ToLower()}' AND LOWER(fieldname) = '{fieldName.ToLower()}' AND activesequence = 'T'";
+                await ExecuteNonQueryAsync(updateActiveToFalse);
+
+                string updatePrefixToActive = $"UPDATE {seqTableName} SET activesequence = 'T' WHERE LOWER(transtype) = '{transId.ToLower()}' AND LOWER(fieldname) = '{fieldName.ToLower()}' AND prefix = '{prefix}'";
+                await ExecuteNonQueryAsync(updatePrefixToActive);
+
+                int count = await GetDataRowCountAsync(userSeqTableName, "prefix", $"LOWER(transtype) = '{transId.ToLower()}' AND LOWER(fieldname) = '{fieldName.ToLower()}' AND LOWER(uname) = '{userName.ToLower()}'", string.Empty);
+
+                if (count > 0)
+                {
+                    string updateSQL = $"UPDATE {userSeqTableName} SET prefix = '{prefix}' WHERE LOWER(transtype) = '{transId.ToLower()}' AND LOWER(fieldname) = '{fieldName.ToLower()}' AND LOWER(uname) = '{userName.ToLower()}'";
+                    await ExecuteNonQueryAsync(updateSQL);
+                }
+                else
+                {
+                    string insertSQL = $"INSERT INTO {userSeqTableName} (transtype, fieldname, uname, prefix) VALUES ('{transId}', '{fieldName}', '{userName}', '{prefix}')";
+                    await ExecuteNonQueryAsync(insertSQL);
+                }
+
+                await CommitTransactionAsync();
             }
-            else
+            catch
             {
-                string insertSQL = $"INSERT INTO {userSeqTableName} (transtype, fieldname, uname, prefix) VALUES ('{transId}', '{fieldName}', '{userName}', '{prefix}')";
-                await ExecuteNonQueryAsync(insertSQL);
+                await RollbackTransactionAsync();
+                throw;
             }
         }
 
