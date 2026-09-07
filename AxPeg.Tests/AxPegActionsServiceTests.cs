@@ -55,6 +55,26 @@ public class AxPegActionsServiceTests
         publisher.Verify(x => x.PushToQueueAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
+    [Fact]
+    public async Task ApproveTaskAsync_returns_success_when_notification_fails_after_commit()
+    {
+        var repository = new Mock<IStoreDataRepository>();
+        var publisher = new Mock<IRabbitMQPublisher>();
+        var email = new Mock<IEmailService>();
+        repository.Setup(x => x.OpenConnectionAsync("app")).ReturnsAsync(true);
+        repository.Setup(x => x.ExecuteQueryAsync(It.IsAny<string>())).ReturnsAsync(CreateTaskDetails());
+        repository.Setup(x => x.ExecuteNonQueryAsync(It.IsAny<string>())).ReturnsAsync(1);
+        publisher.Setup(x => x.PushToQueueAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(new InvalidOperationException("RabbitMQ unavailable"));
+        var service = new AxPegActionsService(repository.Object, publisher.Object, email.Object);
+
+        bool result = await service.ApproveTaskAsync("app", "task-1", "user", "comment");
+
+        Assert.True(result);
+        repository.Verify(x => x.CommitTransactionAsync(), Times.Once);
+        repository.Verify(x => x.RollbackTransactionAsync(), Times.Never);
+    }
+
     private static DataTable CreateTaskDetails()
     {
         var table = new DataTable();

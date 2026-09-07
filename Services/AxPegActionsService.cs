@@ -59,6 +59,18 @@ namespace AxPeg.Services
             }
         }
 
+        private async Task PublishActionNotificationAsync(string appName, string notification)
+        {
+            try
+            {
+                await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", notification);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "PEG action was committed but its notification could not be published.");
+            }
+        }
+
         public async Task<bool> ApproveTaskAsync(string appName, string taskId, string userName, string comments)
         {
             try
@@ -92,7 +104,7 @@ namespace AxPeg.Services
 
                     await _dbRepo.CommitTransactionAsync();
                     // Push audit or notification message to Queue
-                    await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", $"{{\"taskId\":\"{taskId}\",\"action\":\"Approve\",\"user\":\"{userName}\"}}");
+                    await PublishActionNotificationAsync(appName, $"{{\"taskId\":\"{taskId}\",\"action\":\"Approve\",\"user\":\"{userName}\"}}");
                     return true;
                 }
                 await RollbackTransactionQuietlyAsync();
@@ -141,7 +153,7 @@ namespace AxPeg.Services
                     }
 
                     await _dbRepo.CommitTransactionAsync();
-                    await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", $"{{\"taskId\":\"{taskId}\",\"action\":\"Reject\",\"user\":\"{userName}\"}}");
+                    await PublishActionNotificationAsync(appName, $"{{\"taskId\":\"{taskId}\",\"action\":\"Reject\",\"user\":\"{userName}\"}}");
                     return true;
                 }
                 await RollbackTransactionQuietlyAsync();
@@ -190,7 +202,7 @@ namespace AxPeg.Services
                     }
 
                     await _dbRepo.CommitTransactionAsync();
-                    await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", $"{{\"taskId\":\"{taskId}\",\"action\":\"Forward\",\"from\":\"{userName}\",\"to\":\"{forwardToUser}\"}}");
+                    await PublishActionNotificationAsync(appName, $"{{\"taskId\":\"{taskId}\",\"action\":\"Forward\",\"from\":\"{userName}\",\"to\":\"{forwardToUser}\"}}");
                     return true;
                 }
                 await RollbackTransactionQuietlyAsync();
@@ -239,7 +251,7 @@ namespace AxPeg.Services
                     }
 
                     await _dbRepo.CommitTransactionAsync();
-                    await _rmqPublisher.PushToQueueAsync(appName, "peg_notifications", $"{{\"taskId\":\"{taskId}\",\"action\":\"Return\",\"user\":\"{userName}\"}}");
+                    await PublishActionNotificationAsync(appName, $"{{\"taskId\":\"{taskId}\",\"action\":\"Return\",\"user\":\"{userName}\"}}");
                     return true;
                 }
                 await RollbackTransactionQuietlyAsync();
