@@ -19,12 +19,25 @@ namespace AxPeg.Services
             _cache = cache;
         }
 
+        private async Task RollbackTransactionQuietlyAsync()
+        {
+            try
+            {
+                await _dbRepo.RollbackTransactionAsync();
+            }
+            catch (Exception rollbackException)
+            {
+                Log.Warning(rollbackException, "Failed to roll back PEG service transaction.");
+            }
+        }
+
 
         public async Task<bool> CanInitiatePEGAsync(string appName, string processName, string taskName, string indexNo, string keyValue)
         {
             try
             {
                 await _dbRepo.OpenConnectionAsync(appName);
+                await _dbRepo.BeginTransactionAsync();
 
                 // Adding same index process records into AxActiveTasks if they don't exist
                 string selectSameIndexSql = $@"
@@ -55,7 +68,7 @@ namespace AxPeg.Services
 
                         string insertTaskSql = $@"
                             INSERT INTO axactivetasks (taskid, processname, taskname, tasktype, indexno, keyvalue, status, transid, eventdatetime) 
-                            VALUES ('{newTaskId}', '{processName}', '{sTaskName}', '{sTaskType}', {sIndexNo}, '{keyValue}', 'Active', '', '{DateTime.Now:yyyy-MM-dd HH:mm:ss}')";
+                            VALUES ('{newTaskId}', '{processName}', '{sTaskName}', '{sTaskType}', {sIndexNo}, '{keyValue}', 'Active', '', CURRENT_TIMESTAMP)";
                         await _dbRepo.ExecuteNonQueryAsync(insertTaskSql);
                         Log.Information("Created missing active task {TaskId} for {TaskName} under CanInitiatePEG check", newTaskId, sTaskName);
                     }
@@ -73,10 +86,13 @@ namespace AxPeg.Services
                       )";
                 DataTable pendingDt = await _dbRepo.ExecuteQueryAsync(pendingCheckSql);
                 
-                return pendingDt == null || pendingDt.Rows.Count == 0;
+                bool canInitiate = pendingDt == null || pendingDt.Rows.Count == 0;
+                await _dbRepo.CommitTransactionAsync();
+                return canInitiate;
             }
             catch (Exception ex)
             {
+                await RollbackTransactionQuietlyAsync();
                 Log.Error(ex, "Error checking CanInitiatePEG for process {ProcessName}, task {TaskName}", processName, taskName);
                 return false;
             }
@@ -952,4 +968,3 @@ namespace AxPeg.Services
         }
     }
 }
-
