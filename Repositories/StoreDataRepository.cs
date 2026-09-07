@@ -403,7 +403,12 @@ namespace AxPeg.Repositories
             {
                 if (prefixField.StartsWith(":"))
                 {
-                    return await GetPrefixFieldValueAsync(tableName, seqTable, fieldName, prefixField, transId, onlyGet, digits, userName, newRecId);
+                    string dynamicPrefixResult = await GetPrefixFieldValueAsync(tableName, seqTable, fieldName, prefixField, transId, onlyGet, digits, userName, newRecId);
+                    if (!onlyGet)
+                    {
+                        await CommitTransactionAsync();
+                    }
+                    return dynamicPrefixResult;
                 }
                 sPrefix = prefixField;
             }
