@@ -296,6 +296,18 @@ namespace AxPeg.Repositories
         // Database Sequence Generators
         public async Task<string> GetPrefixFieldValueAsync(string tableName, string seqTable, string fieldName, string sval, string transId, bool onlyGet, int digits, string userName, double newRecId)
         {
+            return await GetPrefixFieldValueCoreAsync(tableName, seqTable, fieldName, sval, transId, onlyGet, digits, userName, newRecId, manageTransaction: true);
+        }
+
+        private async Task<string> GetPrefixFieldValueCoreAsync(string tableName, string seqTable, string fieldName, string sval, string transId, bool onlyGet, int digits, string userName, double newRecId, bool manageTransaction)
+        {
+            if (!onlyGet && manageTransaction)
+            {
+                await BeginTransactionAsync();
+            }
+
+            try
+            {
             string seqTableName = $"{tableName}{seqTable}";
             string[] parts = sval.Split(',');
             string s = parts[0];
@@ -357,7 +369,23 @@ namespace AxPeg.Repositories
             }
 
             string formattedNo = lastNo.PadLeft(digits, '0');
-            return pval + formattedNo;
+            string result = pval + formattedNo;
+
+            if (!onlyGet && manageTransaction)
+            {
+                await CommitTransactionAsync();
+            }
+
+            return result;
+            }
+            catch
+            {
+                if (!onlyGet && manageTransaction)
+                {
+                    await RollbackTransactionAsync();
+                }
+                throw;
+            }
         }
 
         public async Task<string> GetLastNoAsync(string tableName, string seqTable, string fieldName, string transId, bool onlyGet, string userName, double newRecId)
@@ -403,7 +431,7 @@ namespace AxPeg.Repositories
             {
                 if (prefixField.StartsWith(":"))
                 {
-                    string dynamicPrefixResult = await GetPrefixFieldValueAsync(tableName, seqTable, fieldName, prefixField, transId, onlyGet, digits, userName, newRecId);
+                    string dynamicPrefixResult = await GetPrefixFieldValueCoreAsync(tableName, seqTable, fieldName, prefixField, transId, onlyGet, digits, userName, newRecId, manageTransaction: false);
                     if (!onlyGet)
                     {
                         await CommitTransactionAsync();
