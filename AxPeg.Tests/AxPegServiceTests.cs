@@ -49,4 +49,25 @@ public class AxPegServiceTests
         repository.Verify(x => x.CommitTransactionAsync(), Times.Never);
         repository.Verify(x => x.RollbackTransactionAsync(), Times.Once);
     }
+
+    [Fact]
+    public async Task GetTransInitDateTimeAsync_uses_database_clock_when_no_initiation_task_exists()
+    {
+        var databaseTime = new DataTable();
+        databaseTime.Columns.Add("current_timestamp", typeof(DateTime));
+        databaseTime.Rows.Add(new DateTime(2026, 9, 7, 12, 30, 45));
+
+        var repository = new Mock<IStoreDataRepository>();
+        var cache = new Mock<IRedisCacheService>();
+        repository.Setup(x => x.OpenConnectionAsync("app")).ReturnsAsync(true);
+        repository.SetupSequence(x => x.ExecuteQueryAsync(It.IsAny<string>()))
+            .ReturnsAsync(new DataTable())
+            .ReturnsAsync(databaseTime);
+        var service = new AxPegService(repository.Object, cache.Object);
+
+        string result = await service.GetTransInitDateTimeAsync("app", "Process", "key");
+
+        Assert.Equal("2026-09-07 12:30:45", result);
+        repository.Verify(x => x.ExecuteQueryAsync("SELECT CURRENT_TIMESTAMP"), Times.Once);
+    }
 }

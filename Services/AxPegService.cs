@@ -31,6 +31,28 @@ namespace AxPeg.Services
             }
         }
 
+        private async Task<string> GetDatabaseDateTimeAsync()
+        {
+            DataTable timestamp = await _dbRepo.ExecuteQueryAsync("SELECT CURRENT_TIMESTAMP");
+            if (timestamp != null && timestamp.Rows.Count > 0 && timestamp.Rows[0][0] != DBNull.Value)
+            {
+                object timestampValue = timestamp.Rows[0][0];
+                if (timestampValue is DateTime databaseDateTime)
+                {
+                    return databaseDateTime.ToString("yyyy/MM/dd HH:mm:ss");
+                }
+
+                if (DateTime.TryParse(timestampValue.ToString(), out databaseDateTime))
+                {
+                    return databaseDateTime.ToString("yyyy/MM/dd HH:mm:ss");
+                }
+
+                return timestampValue.ToString() ?? string.Empty;
+            }
+
+            return DateTime.UtcNow.ToString("yyyy/MM/dd HH:mm:ss");
+        }
+
 
         public async Task<bool> CanInitiatePEGAsync(string appName, string processName, string taskName, string indexNo, string keyValue)
         {
@@ -837,20 +859,18 @@ namespace AxPeg.Services
                     }
                 }
 
-                // Add or replace DON
-                string dateOfNotification = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-                sTaskParamsValue = ReplaceValueInString(sTaskParamsValue, "static.ax__don", dateOfNotification);
-
                 string finalTaskId = string.IsNullOrEmpty(taskId) ? Guid.NewGuid().ToString("N") : taskId;
 
                 await _dbRepo.OpenConnectionAsync(appName);
+                string dateOfNotification = await GetDatabaseDateTimeAsync();
+                sTaskParamsValue = ReplaceValueInString(sTaskParamsValue, "static.ax__don", dateOfNotification);
                 string insertSql = $@"
                     INSERT INTO AxActiveTaskParams (
                         eventdatetime, taskid, transid, keyfield, keyvalue, 
                         taskstatus, username, processname, taskname, tasktype, 
                         indexno, subindexno, priorindex, taskparams
                     ) VALUES (
-                        '{DateTime.Now:yyyy-MM-dd HH:mm:ss}', 
+                        CURRENT_TIMESTAMP, 
                         '{finalTaskId}', 
                         '{transId}', 
                         '{keyField}', 
@@ -891,14 +911,14 @@ namespace AxPeg.Services
                 DataTable dt = await _dbRepo.ExecuteQueryAsync(sql);
                 if (dt != null && dt.Rows.Count > 0)
                 {
-                    return dt.Rows[0]["eventdatetime"]?.ToString() ?? DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                    return dt.Rows[0]["eventdatetime"]?.ToString() ?? await GetDatabaseDateTimeAsync();
                 }
-                return DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                return await GetDatabaseDateTimeAsync();
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error getting transaction init datetime for process {ProcessName}", processName);
-                return DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                return DateTime.UtcNow.ToString("yyyy/MM/dd HH:mm:ss");
             }
             finally
             {
