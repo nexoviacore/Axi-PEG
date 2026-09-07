@@ -41,7 +41,7 @@ namespace AxPeg.Services
             string sql = $@"INSERT INTO axactivetaskstatus 
                             (taskid, transid, keyfield, keyvalue, taskstatus, username, processname, taskname, statusreason, statustext, tasktype, indexno, subindexno, priorindex, eventdatetime) 
                             VALUES 
-                            ('{taskId}', '{transId}', '{keyField}', '{keyValue}', '{status.ToLower()}', '{userName}', '{processName}', '{taskName}', '{comments?.Replace("'", "''")}', '{comments?.Replace("'", "''")}', '{taskType}', {idx}, {subIdx}, {prIdx}, GETDATE())";
+                            ('{taskId}', '{transId}', '{keyField}', '{keyValue}', '{status.ToLower()}', '{userName}', '{processName}', '{taskName}', '{comments?.Replace("'", "''")}', '{comments?.Replace("'", "''")}', '{taskType}', {idx}, {subIdx}, {prIdx}, CURRENT_TIMESTAMP)";
             await _dbRepo.ExecuteNonQueryAsync(sql);
         }
 
@@ -55,7 +55,7 @@ namespace AxPeg.Services
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
 
                 // Update active tasks status
-                string updateSql = $"UPDATE axactivetasks SET status = 'Approved', approvedby = '{userName}', approvedon = GETDATE(), comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
+                string updateSql = $"UPDATE axactivetasks SET status = 'Approved', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
                 
                 if (rows > 0)
@@ -101,7 +101,7 @@ namespace AxPeg.Services
 
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
 
-                string updateSql = $"UPDATE axactivetasks SET status = 'Rejected', approvedby = '{userName}', approvedon = GETDATE(), comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
+                string updateSql = $"UPDATE axactivetasks SET status = 'Rejected', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
 
                 if (rows > 0)
@@ -146,7 +146,7 @@ namespace AxPeg.Services
 
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
 
-                string updateSql = $"UPDATE axactivetasks SET status = 'Forwarded', approvedby = '{userName}', approvedon = GETDATE(), comments = '{comments}', forwardedto = '{forwardToUser}' WHERE taskid = '{taskId}' AND status = 'Active'";
+                string updateSql = $"UPDATE axactivetasks SET status = 'Forwarded', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}', forwardedto = '{forwardToUser}' WHERE taskid = '{taskId}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
 
                 if (rows > 0)
@@ -191,7 +191,7 @@ namespace AxPeg.Services
 
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
 
-                string updateSql = $"UPDATE axactivetasks SET status = 'Returned', approvedby = '{userName}', approvedon = GETDATE(), comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
+                string updateSql = $"UPDATE axactivetasks SET status = 'Returned', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
 
                 if (rows > 0)
@@ -274,7 +274,7 @@ namespace AxPeg.Services
                             await _dbRepo.ExecuteNonQueryAsync(updateSql);
 
                             // Insert into status history table
-                            string insertHistory = $"INSERT INTO axactivetaskstatus (taskid, status, statusdate) VALUES ('{targetTaskId}', 'skipped', GETDATE())";
+                            string insertHistory = $"INSERT INTO axactivetaskstatus (taskid, status, statusdate) VALUES ('{targetTaskId}', 'skipped', CURRENT_TIMESTAMP)";
                             await _dbRepo.ExecuteNonQueryAsync(insertHistory);
 
                             Log.Information("Task {TaskId} successfully skipped as part of index group sync.", targetTaskId);
@@ -553,7 +553,7 @@ namespace AxPeg.Services
             {
                 await _dbRepo.OpenConnectionAsync(appName);
                 string insertSql = $@"INSERT INTO AxActiveTaskData (EventDateTime, TaskId, Transid, KeyField, KeyValue, DataValues) 
-                                      VALUES (GETDATE(), '{taskId}', '{transId}', '{keyField}', '{keyValue}', '{dataJsonString.Replace("'", "''")}')";
+                                      VALUES (CURRENT_TIMESTAMP, '{taskId}', '{transId}', '{keyField}', '{keyValue}', '{dataJsonString.Replace("'", "''")}')";
                 await _dbRepo.ExecuteNonQueryAsync(insertSql);
                 Log.Information("Successfully added record to AxActiveTaskData for task {TaskId}", taskId);
             }
