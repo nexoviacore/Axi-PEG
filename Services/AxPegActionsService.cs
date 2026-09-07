@@ -21,9 +21,11 @@ namespace AxPeg.Services
             _emailService = emailService;
         }
 
+        private static string EscapeSqlLiteral(string? value) => (value ?? string.Empty).Replace("'", "''");
+
         private async Task<System.Data.DataRow?> GetActiveTaskDetailsAsync(string appName, string taskId)
         {
-            string sql = $"SELECT processname, taskname, tasktype, indexno, subindexno, priorindex, keyfield, keyvalue, transid FROM axactivetasks WHERE taskid = '{taskId}'";
+            string sql = $"SELECT processname, taskname, tasktype, indexno, subindexno, priorindex, keyfield, keyvalue, transid FROM axactivetasks WHERE taskid = '{EscapeSqlLiteral(taskId)}'";
             var dt = await _dbRepo.ExecuteQueryAsync(sql);
             if (dt != null && dt.Rows.Count > 0)
             {
@@ -68,7 +70,7 @@ namespace AxPeg.Services
                 await _dbRepo.BeginTransactionAsync();
 
                 // Update active tasks status
-                string updateSql = $"UPDATE axactivetasks SET status = 'Approved', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
+                string updateSql = $"UPDATE axactivetasks SET status = 'Approved', approvedby = '{EscapeSqlLiteral(userName)}', approvedon = CURRENT_TIMESTAMP, comments = '{EscapeSqlLiteral(comments)}' WHERE taskid = '{EscapeSqlLiteral(taskId)}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
                 
                 if (rows > 0)
@@ -118,7 +120,7 @@ namespace AxPeg.Services
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
                 await _dbRepo.BeginTransactionAsync();
 
-                string updateSql = $"UPDATE axactivetasks SET status = 'Rejected', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
+                string updateSql = $"UPDATE axactivetasks SET status = 'Rejected', approvedby = '{EscapeSqlLiteral(userName)}', approvedon = CURRENT_TIMESTAMP, comments = '{EscapeSqlLiteral(comments)}' WHERE taskid = '{EscapeSqlLiteral(taskId)}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
 
                 if (rows > 0)
@@ -167,7 +169,7 @@ namespace AxPeg.Services
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
                 await _dbRepo.BeginTransactionAsync();
 
-                string updateSql = $"UPDATE axactivetasks SET status = 'Forwarded', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}', forwardedto = '{forwardToUser}' WHERE taskid = '{taskId}' AND status = 'Active'";
+                string updateSql = $"UPDATE axactivetasks SET status = 'Forwarded', approvedby = '{EscapeSqlLiteral(userName)}', approvedon = CURRENT_TIMESTAMP, comments = '{EscapeSqlLiteral(comments)}', forwardedto = '{EscapeSqlLiteral(forwardToUser)}' WHERE taskid = '{EscapeSqlLiteral(taskId)}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
 
                 if (rows > 0)
@@ -216,7 +218,7 @@ namespace AxPeg.Services
                 var taskDetails = await GetActiveTaskDetailsAsync(appName, taskId);
                 await _dbRepo.BeginTransactionAsync();
 
-                string updateSql = $"UPDATE axactivetasks SET status = 'Returned', approvedby = '{userName}', approvedon = CURRENT_TIMESTAMP, comments = '{comments}' WHERE taskid = '{taskId}' AND status = 'Active'";
+                string updateSql = $"UPDATE axactivetasks SET status = 'Returned', approvedby = '{EscapeSqlLiteral(userName)}', approvedon = CURRENT_TIMESTAMP, comments = '{EscapeSqlLiteral(comments)}' WHERE taskid = '{EscapeSqlLiteral(taskId)}' AND status = 'Active'";
                 int rows = await _dbRepo.ExecuteNonQueryAsync(updateSql);
 
                 if (rows > 0)
