@@ -362,6 +362,13 @@ namespace AxPeg.Repositories
 
         public async Task<string> GetLastNoAsync(string tableName, string seqTable, string fieldName, string transId, bool onlyGet, string userName, double newRecId)
         {
+            if (!onlyGet)
+            {
+                await BeginTransactionAsync();
+            }
+
+            try
+            {
             string seqTableName = $"{tableName}{seqTable}";
             string prefix = await GetUserActivePrefixAsync(tableName, transId, fieldName, userName);
 
@@ -378,6 +385,10 @@ namespace AxPeg.Repositories
             var table = await ExecuteQueryAsync(sql);
             if (table == null || table.Rows.Count == 0)
             {
+                if (!onlyGet)
+                {
+                    await CommitTransactionAsync();
+                }
                 return string.Empty;
             }
 
@@ -417,7 +428,20 @@ namespace AxPeg.Repositories
                 await ExecuteNonQueryAsync(updateSQL);
             }
 
+            if (!onlyGet)
+            {
+                await CommitTransactionAsync();
+            }
             return result;
+            }
+            catch
+            {
+                if (!onlyGet)
+                {
+                    await RollbackTransactionAsync();
+                }
+                throw;
+            }
         }
 
         public async Task<string> GetUserActivePrefixAsync(string tableName, string transId, string fieldName, string userName)
