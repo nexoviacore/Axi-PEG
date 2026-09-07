@@ -23,4 +23,8 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="AxPeg.Tests\**\*.cs" />
+  </ItemGroup>
+
 </Project>

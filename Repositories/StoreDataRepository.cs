@@ -553,7 +553,7 @@ namespace AxPeg.Repositories
             }
             else
             {
-                string insertSql = $"INSERT INTO {outboundTable} (transid, recordid, username, modifiedon) VALUES ('{transId}', {recordId}, '{userName}', GETDATE())";
+                string insertSql = $"INSERT INTO {outboundTable} (transid, recordid, oaction, username, modifiedon, senton) VALUES ('{transId}', {recordId}, NULL, '{userName}', NULL, NULL)";
                 try
                 {
                     await ExecuteNonQueryAsync(insertSql);
@@ -561,7 +561,7 @@ namespace AxPeg.Repositories
                 catch (Exception ex)
                 {
                     Log.Warning(ex, "Failed to insert into outbound table. Trying Oracle sequence sequence format.");
-                    string oracleInsert = $"INSERT INTO {outboundTable} (outboundid, transid, recordid, username, modifiedon) VALUES ({tableName}outbound_seq.nextval, '{transId}', {recordId}, '{userName}', GETDATE())";
+                    string oracleInsert = $"INSERT INTO {outboundTable} (outboundid, transid, recordid, oaction, username, modifiedon, senton) VALUES ({tableName}outbound_seq.nextval, '{transId}', {recordId}, NULL, '{userName}', NULL, NULL)";
                     await ExecuteNonQueryAsync(oracleInsert);
                 }
             }
@@ -580,4 +580,3 @@ namespace AxPeg.Repositories
         }
     }
 }
-
